@@ -97,6 +97,22 @@ class SignalMap:
             callback = _BusyEdge(callback)
         self._adapter.subscribe(sig.pv, lambda raw: callback(sig.decode(raw)))
         
+    def on_connection(self, callback):
+        """callback(signal_name, connected: bool) when a signal's PV drops or returns.
+
+        Call after connect(). Constants never disconnect, so they never report.
+        """
+        signals_of_pv = {}
+        for name, sig in self.config.signals.items():
+            if not sig.is_constant:
+                signals_of_pv.setdefault(sig.pv, []).append(name)
+
+        def on_pv(pvname, connected):
+            for name in signals_of_pv.get(pvname, []):
+                callback(name, connected)
+
+        self._adapter.on_connection(on_pv)
+        
     def snapshot(self):
         """Every configured signal -> calue; None where reading failed."""
         values = {}

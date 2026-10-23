@@ -16,6 +16,7 @@ class EpicsAdapter:
         self._callbacks = []   # caproto keeps only WEAK references to callbacks:
                                # without this list they are garbage collected and
                                 # subscriptions silently stop firing
+        self._conn_callbacks = []  # same reason, for connection callbacks
     # connection ---------------------------------------------------------
     def connect(self, pvnames, timeout=5.0):
         """Connect to all PVs. Returns {pvname: None if ok, else error message}."""
@@ -67,8 +68,18 @@ class EpicsAdapter:
         sub.add_callback(on_event)
         self._callbacks.append((sub, on_event))   # keep a strong reference to avoid GC
         
+    def on_connection(self, callback):
+        """callback(pvname, connected: bool) whenever a connected PV drops or returns."""
+        def on_state(pv, state):          # caproto passes "connected" / "disconnected"
+            callback(pv.name, state == "connected")
+
+        self._conn_callbacks.append(on_state)   # strong reference, see __init__
+        for pv in self._pvs.values():
+            pv.connection_state_callback.add_callback(on_state)
+
     def close(self):
         for sub, _ in self._callbacks:
             sub.clear()
         self._callbacks.clear()
+        self._conn_callbacks.clear()            # <- new
         self._ctx.disconnect()

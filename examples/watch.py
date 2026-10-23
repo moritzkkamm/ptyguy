@@ -1,12 +1,14 @@
 """Watch a beamline through PtyGuy's eyes.
 
 Prints every change of scan_state and writing as PtyGuy sees it (logical
-values, canonical units), plus a full snapshot whenever a scan ends.
+values, canonical units), a full snapshot whenever a scan ends, and when the
+connection to the beamline is lost or comes back.
 
     python examples/watch.py configs/dummy.yaml
 
 Ctrl+C to stop.
 """
+import logging
 import sys
 import threading
 import time
@@ -16,10 +18,37 @@ from ptyguy.signals import SignalMap
 t0 = time.time()
 lock = threading.Lock()          # callbacks arrive from caproto's threads
 
+# caproto logs every lost connection with a full traceback. We report
+# connection changes ourselves (below), so silence it.
+logging.getLogger("caproto").setLevel(logging.CRITICAL)
+
 
 def say(text):
     with lock:
         print("[%7.2f s] %s" % (time.time() - t0, text), flush=True)
+
+
+class ConnectionWatch:
+    """Turns per-signal connect/disconnect callbacks into two messages:
+    'connection lost' (first signal drops) and 'connection restored' (last returns)."""
+
+    def __init__(self, sm):
+        self.sm = sm
+        self.lost = set()
+        self._lock = threading.Lock()
+
+    def __call__(self, name, connected):
+        with self._lock:
+            was_ok = not self.lost
+            (self.lost.discard if connected else self.lost.add)(name)
+            now_ok = not self.lost
+        if was_ok and not now_ok:
+            say("CONNECTION LOST (%s ...): events missed from here on" % name)
+        elif now_ok and not was_ok:
+            say("CONNECTION RESTORED: re-reading state, the next scan_state is NOT a "
+                "real transition, just the current value")
+            threading.Thread(target=print_snapshot, args=(self.sm, "reconnect"),
+                             daemon=True).start()
 
 
 def main(config_path):
@@ -41,6 +70,7 @@ def main(config_path):
     def on_writing(writing):
         say("writing    -> %s" % writing)
 
+    sm.on_connection(ConnectionWatch(sm))
     sm.subscribe("scan_state", on_state)
     if sm.has("writing"):
         sm.subscribe("writing", on_writing)
@@ -55,11 +85,13 @@ def main(config_path):
     return 0
 
 
-def print_snapshot(sm, state):
+def print_snapshot(sm, reason):
     snap = sm.snapshot()
-    lines = ["snapshot after '%s':" % state]
+    lines = ["snapshot after '%s':" % reason]
     for name, value in snap.items():
         unit = sm.config.signals[name].spec.unit or ""
+        if isinstance(value, float):
+            value = "%.6g" % value
         lines.append("    %-18s %s %s" % (name, value, unit))
     say("\n".join(lines))
 
