@@ -1,0 +1,32 @@
+# What to do with scans from the dummy beamline. Paths are relative to this file.
+spool: ../spool
+analysis_root: ../analysis
+max_parallel: 1                     # reconstructions at the same time
+reconstruct: [complete]             # also possible: aborted, incomplete
+
+snapshots:
+  every: 5                          # iterations between snapshots
+  keep: 3                           # rolling: only the newest 3 stay
+  downsample: 1
+  cleanup: on_success               # on_success | always | never
+
+probes:
+  index: ../probes/index.yaml       # build it: python examples/make_probe_library.py sim/data probes
+  size_tolerance: 0.2               # accept a probe up to 20 % off in size
+  energy_tolerance: 5               # eV
+
+# run: the command for one scan, executed in this folder.
+#   {job}    -> path of that scan's job.json
+#   {python} -> the Python PtyGuy runs in (same conda env)
+recipes:                            # first match wins
+  - name: small-probe
+    match: {probe_size: [0, 1.0]}
+    run: "{python} fake_recon.py {job}"
+    params: {iterations: 40, seconds: 4}
+    probe: library
+
+  - name: large-probe
+    match: {probe_size: [1.0, 5.0], energy: [600, 800]}
+    run: "{python} fake_recon.py {job}"
+    params: {iterations: 20, seconds: 2}
+    probe: library

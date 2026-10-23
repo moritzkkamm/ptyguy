@@ -80,6 +80,14 @@ def choose_dataset(probe_um, datasets):
     best = min(datasets, key=lambda size: abs(size - probe_um))
     return datasets[best]
 
+def write_empty(dst):
+    """Replace dst by an empty file. Unlink first: dst may be a hardlink to a
+    dataset (same scan number after an IOC restart), and writing through it
+    would truncate the dataset itself."""
+    dst = Path(dst)
+    if dst.exists():
+        dst.unlink()
+    dst.write_bytes(b"")
 
 def link_or_copy(src, dst):
     """Hardlink src to dst (no extra disk, works on Windows without admin).
@@ -202,7 +210,7 @@ class Detector(PVGroup):
             # Return immediately; the file becomes ready FLUSH_DELAY seconds later.
             self._flush_task = asyncio.create_task(self._flush())
         else:
-            self._path.write_bytes(b"")                  # aborted: empty/faulty file
+            write_empty(self._path)                      # aborted: empty/faulty file
             await self.writing.write(0)
             log.info("aborted: wrote empty %s", self._path.name)
 

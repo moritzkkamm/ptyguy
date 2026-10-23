@@ -2,6 +2,7 @@
 
     python -m ptyguy check  configs/dummy.yaml                 # are all signals reachable?
     python -m ptyguy listen configs/dummy.yaml --spool spool   # scan events -> spool/incoming
+    python -m ptyguy launch examples/launcher.yaml             # spool -> reconstruction jobs
 """
 import argparse
 import logging
@@ -82,6 +83,26 @@ def cmd_listen(args):
     return 0
 
 
+def cmd_launch(args):
+    from .launcher import LauncherService, load_launcher_config
+
+    try:
+        config = load_launcher_config(args.config)
+    except FileNotFoundError:
+        print("config file not found: %s (current folder: %s)" % (args.config, os.getcwd()))
+        return 2
+    except ConfigError as e:
+        print(e)
+        return 2
+    service = LauncherService(config)
+    print("Ctrl+C to stop (running jobs keep running)")
+    try:
+        service.run_forever(poll_s=args.poll)
+    except KeyboardInterrupt:
+        pass
+    return 0
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(prog="ptyguy")
     p.add_argument("-v", "--verbose", action="store_true")
@@ -97,6 +118,11 @@ def main(argv=None):
     c.add_argument("--spool", default="spool", help="spool folder (default: ./spool)")
     c.add_argument("--timeout", type=float, default=5.0, help="connect timeout, s")
     c.set_defaults(func=cmd_listen, log_level=logging.INFO)
+
+    c = sub.add_parser("launch", help="turn spooled scan events into reconstruction jobs")
+    c.add_argument("config", help="launcher.yaml")
+    c.add_argument("--poll", type=float, default=2.0, help="seconds between spool checks")
+    c.set_defaults(func=cmd_launch, log_level=logging.INFO)
 
     args = p.parse_args(argv)
     logging.basicConfig(level=logging.DEBUG if args.verbose else args.log_level,

@@ -157,10 +157,10 @@ class ScanTracker:
             else:
                 cur.warnings.append("scan ended while disconnected")
                 self._to_finishing(cur, obs.t, snap=None)
-                self._note_new_scans(number, state, snap, obs.t, after=cur.number)
+                self._after_gap(number, state, snap, obs.t, last=cur.number)
 
         elif self.last_number is not None and number != self.last_number:
-            self._note_new_scans(number, state, snap, obs.t, after=self.last_number)
+            self._after_gap(number, state, snap, obs.t, last=self.last_number)
 
         self.last_number = number
         return events
@@ -189,6 +189,15 @@ class ScanTracker:
         if scan is self.current:
             self.current = None
         self.finishing.append(scan)
+        
+    def _after_gap(self, number, state, snap, t, last):
+        """The scan number changed while we were disconnected."""
+        if number > last:                       # scans happened while we were away
+            self._note_new_scans(number, state, snap, t, after=last)
+        elif state == "running":                # counter went DOWN: IOC restarted ...
+            self._start(t, snap, ["scan counter reset from %d to %d (IOC restart?): "
+                                  "start time and metadata read late" % (last, number)])
+        # ... and nothing is running: no new scan, nothing to emit
 
     def _note_new_scans(self, number, state, snap, t, after):
         """Scans happened while we were disconnected; we only know the newest one."""

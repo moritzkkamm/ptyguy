@@ -213,3 +213,23 @@ def test_reconcile_without_data_is_harmless(bad):
     sc = normal_start(Script())
     sc.feed("reconcile", 5, s=bad)
     assert sc.tracker.phase == "scanning"
+    
+def test_ioc_restart_resets_counter_no_phantom_scan():
+    """Regression: a fresh IOC (counter 0, idle) created a phantom 'scan 0'."""
+    sc = Script()
+    sc.feed("state", 0, "idle", snap(3, "idle"), initial=True)
+    sc.feed("connection", 1, False)
+    sc.feed("connection", 5, True)
+    sc.feed("reconcile", 5, s=snap(0, "idle", path=""))
+    sc.ticks(5, 60)
+    assert sc.events == [] and sc.tracker.phase == "idle"
+
+
+def test_counter_reset_while_scan_running_finishes_old_scan():
+    sc = normal_start(Script(), number=4)
+    sc.feed("connection", 3, False)
+    sc.feed("connection", 8, True)
+    sc.feed("reconcile", 8, s=snap(1, "running"))   # IOC restarted, new scan 1 runs
+    assert sc.tracker.current.number == 1
+    assert "scan counter reset from 4 to 1" in sc.tracker.current.warnings[0]
+    assert sc.tracker.finishing[0].number == 4      # old one still gets its file check
