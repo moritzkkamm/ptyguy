@@ -10,7 +10,8 @@ Recipe params (all optional):
     seed            random position order, default 0
 
 Physics (matching sim/simulate_data.py): far field, ortho FFT, data stored
-fftshifted, pixel size at the sample dx = lambda * z / (N * p).
+fftshifted. Data, positions and geometry come from ptyguy.data.load_scan(job):
+no file paths in here, they are in the beamline config's `data:` section.
 """
 import importlib
 import sys
@@ -20,19 +21,17 @@ import h5py
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))   # run without install
+from ptyguy.data import load_scan  # noqa: E402
 from ptyguy.hook import Hook, load_job  # noqa: E402
 
-HC_EV_NM = 1239.84
 MARGIN = 4                                    # same as the simulation
 
 
-def load_scan(path):
+def ground_truth(path):
+    """Only the dummy's simulated files have this; real data doesn't."""
     with h5py.File(path, "r") as f:
-        data = f["entry/data/data"][()].astype(np.float32)
-        positions_um = f["entry/data/positions_um"][()]
-        inst = dict(f["entry/instrument"].attrs)
-        truth = f["entry/ground_truth/object"][()] if "entry/ground_truth/object" in f else None
-    return data, positions_um, inst, truth
+        key = "entry/ground_truth/object"
+        return f[key][()] if key in f else None
 
 
 def initial_probe(job, shape, dx_um, total_intensity):
@@ -70,12 +69,14 @@ def main(job_path=None):
     probe_from = int(params.get("probe_update_from", 1))
     rng = np.random.default_rng(int(params.get("seed", 0)))
 
-    data, positions_um, inst, truth = load_scan(job["event"]["file_path"])
-    n_pos, ny, nx = data.shape
-    wavelength_um = HC_EV_NM / inst["energy_eV"] * 1e-3
-    dx_um = wavelength_um * inst["detector_distance_m"] * 1e6 / (nx * inst["pixel_size_um"])
+    scan = load_scan(job)
+    for w in scan.warnings:
+        print("WARNING:", w, flush=True)
+    data, n_pos, (ny, nx) = scan.frames, scan.frames.shape[0], scan.frames.shape[1:]
+    dx_um = scan.dx_um
+    truth = ground_truth(scan.file_path)
 
-    pos_px = np.round(positions_um / dx_um).astype(int)
+    pos_px = np.round(scan.positions_um / dx_um).astype(int)
     pos_px = pos_px - pos_px.min(axis=0) + MARGIN
     obj_shape = tuple(int(n) for n in pos_px.max(axis=0) + (ny, nx) + MARGIN)
 

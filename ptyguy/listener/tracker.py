@@ -63,8 +63,9 @@ class _Scan:
 
 
 class ScanTracker:
-    def __init__(self, beamline, options, has_writing, file_probe=probe_file):
+    def __init__(self, beamline, options, has_writing, file_probe=probe_file, data_layout=None):
         self.beamline = beamline
+        self.data_layout = data_layout         # copied into every event (self-contained)
         self.stable_s = float(options.get("file_stable_s", 2.0))
         self.timeout_s = float(options.get("file_timeout_s", 300.0))
         self.has_writing = has_writing
@@ -189,7 +190,7 @@ class ScanTracker:
         if scan is self.current:
             self.current = None
         self.finishing.append(scan)
-        
+
     def _after_gap(self, number, state, snap, t, last):
         """The scan number changed while we were disconnected."""
         if number > last:                       # scans happened while we were away
@@ -251,4 +252,5 @@ class ScanTracker:
             uid=make_uid(self.beamline, max(scan.number, 0), started),
             beamline=self.beamline, status=status, scan_number=scan.number,
             file_path=scan.file_path, started=scan.started, finished=scan.finished,
-            emitted=t, metadata=dict(scan.metadata), warnings=list(scan.warnings))
+            emitted=t, metadata=dict(scan.metadata), warnings=list(scan.warnings),
+            data_layout=self.data_layout)

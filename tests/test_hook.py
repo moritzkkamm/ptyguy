@@ -9,6 +9,7 @@ import numpy as np
 import pytest
 
 from ptyguy.hook import Hook
+from ptyguy.signals import load_config
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -66,8 +67,11 @@ def test_epie_reconstructs_dummy_data(tmp_path):
                     str(tmp_path / "data"), "--probe-sizes", "1.0"], check=True,
                    capture_output=True)
     d = tmp_path / "job"
+    layout = load_config(ROOT / "configs" / "dummy.yaml").data
     job = {"uid": "t", "event": {"file_path": str(tmp_path / "data" / "sim_probe_1.00um.h5"),
-                                 "metadata": {"probe_size": 1.0}, "scan_number": 1},
+                                 "metadata": {"probe_size": 1.0, "energy": 700.0,
+                                              "detector_distance": 0.25, "pixel_size": 75.0},
+                                 "scan_number": 1, "data_layout": layout},
            "params": {"iterations": 15}, "probe": {"path": None, "reason": "test"},
            "snapshots": {"every": 5, "keep": 3, "downsample": 1},
            "paths": {"snapshots": str(d / "snapshots"), "progress": str(d / "progress.json"),

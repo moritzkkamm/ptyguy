@@ -22,6 +22,7 @@ class ScanEvent:
     emitted: float                   # when the listener decided
     metadata: Dict[str, Any] = field(default_factory=dict)   # canonical units
     warnings: List[str] = field(default_factory=list)
+    data_layout: Optional[Dict[str, Any]] = None   # how to read file_path (beamline config `data:`)
 
     def to_dict(self):
         return asdict(self)

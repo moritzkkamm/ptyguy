@@ -98,6 +98,7 @@ class BeamlineConfig:
     control_system: str
     signals: Dict[str, SignalConfig]
     options: Dict[str, Any] = field(default_factory=lambda: dict(DEFAULT_OPTIONS))
+    data: Optional[Dict[str, Any]] = None      # layout of the scan files (ptyguy.data)
     source: Optional[str] = None
     
 # loading and validation
@@ -139,10 +140,11 @@ def load_config(source):
             problems.append("unknown option %r (known: %s)" % (key, ", ".join(DEFAULT_OPTIONS)))
         else:
             options[key] = value
-
+    from ..data.layout import parse_data_layout
+    data = parse_data_layout(raw.get("data"), problems, signals=set(signals))
     if problems:
         raise ConfigError(problems)
-    return BeamlineConfig(beamline, control, signals, options, origin)
+    return BeamlineConfig(beamline, control, signals, options, data, origin)
 
 
 def _parse_signal(name, entry, problems):

@@ -23,7 +23,7 @@ class ListenerService:
         cfg = signalmap.config
         self.tracker = ScanTracker(cfg.beamline, cfg.options,
                                    has_writing=signalmap.has("writing"),
-                                   file_probe=file_probe)
+                                   file_probe=file_probe, data_layout=cfg.data)
         self._queue = queue.Queue()
         self._stop = threading.Event()
         self._thread = None

@@ -25,3 +25,14 @@ signals:
 options:
   file_stable_s: 2         # no 'writing' signal: file size unchanged this long = ready
   file_timeout_s: 300      # scan done but file not ready after this long: INCOMPLETE
+
+# Where things are in the scan files (HDF5). Check it on a real file:
+#   python -m ptyguy check-data configs/dummy.yaml sim/scans/scan_00001.h5
+data:
+  format: hdf5
+  frames:    {path: entry/data/data}
+  positions: {path: entry/data/positions_um, unit: um, order: yx}
+  geometry:                       # from: event = PV value at scan start; path = also in the file
+    energy:            {from: event, path: entry/instrument, attr: energy_eV, unit: eV}
+    detector_distance: {from: event, path: entry/instrument, attr: detector_distance_m, unit: m}
+    pixel_size:        {from: event, path: entry/instrument, attr: pixel_size_um, unit: um}
