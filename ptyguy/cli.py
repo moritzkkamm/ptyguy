@@ -4,6 +4,7 @@
     python -m ptyguy listen configs/dummy.yaml --spool spool   # scan events -> spool/incoming
     python -m ptyguy launch examples/launcher.yaml             # spool -> reconstruction jobs
     python -m ptyguy check-data configs/dummy.yaml scan.h5     # does the data mapping fit?
+    python -m ptyguy watch examples/launcher.yaml              # live plots of the jobs
 """
 import argparse
 import logging
@@ -193,12 +194,31 @@ def cmd_check_data(args):
     if probe and step == step:
         print("overlap     probe %.3g um, step %.3g um -> linear overlap %.0f %%  "
               "(>~60 %% is comfortable)" % (probe, step, 100 * (1 - step / probe)))
-    warnings = scan.warnings
-    if not metadata:                       # already said above: no PVs, file used
-        warnings = [w for w in warnings if "no PV value" not in w]
-    for w in warnings:
+    for w in scan.warnings:
         print("WARNING     %s" % w)
-    print("\nmapping ok" + (" (with warnings)" if warnings else ""))
+    print("\nmapping ok" + (" (with warnings)" if scan.warnings else ""))
+    return 0
+
+
+def cmd_watch(args):
+    from pathlib import Path
+    from .plotter.mpl import Watcher
+
+    target = Path(args.target)
+    if target.is_dir():
+        root = target
+    else:
+        from .launcher import load_launcher_config
+        try:
+            root = load_launcher_config(target).analysis_root
+        except FileNotFoundError:
+            print("not found: %s (give a launcher.yaml or an analysis folder)" % target)
+            return 2
+        except ConfigError as e:
+            print(e)
+            return 2
+    print("watching %s  (keys: left/right job, f follow, w phase mode)" % root)
+    Watcher(root, poll_s=args.poll).run()
     return 0
 
 
@@ -229,6 +249,11 @@ def main(argv=None):
     c.add_argument("--offline", action="store_true", help="don't read PV values")
     c.add_argument("--timeout", type=float, default=2.0, help="PV connect timeout, s")
     c.set_defaults(func=cmd_check_data, log_level=logging.CRITICAL)
+
+    c = sub.add_parser("watch", help="live plots of reconstruction jobs")
+    c.add_argument("target", help="launcher.yaml, or an analysis folder")
+    c.add_argument("--poll", type=float, default=1.0, help="seconds between updates")
+    c.set_defaults(func=cmd_watch, log_level=logging.WARNING)
 
     args = p.parse_args(argv)
     logging.basicConfig(level=logging.DEBUG if args.verbose else args.log_level,
