@@ -20,13 +20,20 @@ probes:
 #   {python} -> the Python PtyGuy runs in (same conda env)
 recipes:                            # first match wins
   - name: small-probe
-    match: {probe_size: [0, 1.0]}
-    run: "{python} fake_recon.py {job}"
-    params: {iterations: 40, seconds: 4}
+    match: {probe_size: [0, 1.2]}
+    run: "{python} epie.py {job}"
+    params: {iterations: 100}
     probe: library
 
   - name: large-probe
-    match: {probe_size: [1.0, 5.0], energy: [600, 800]}
-    run: "{python} fake_recon.py {job}"
-    params: {iterations: 20, seconds: 2}
+    match: {probe_size: [1.2, 5.0], energy: [600, 800]}
+    run: "{python} epie.py {job}"
+    params: {iterations: 60}
     probe: library
+
+  # fake_recon.py: no physics, just sleeps and writes files (for testing the plumbing)
+  # - name: plumbing-test
+  #   match: {}
+  #   run: "{python} fake_recon.py {job}"
+  #   params: {iterations: 20, seconds: 2}
+  #   probe: none

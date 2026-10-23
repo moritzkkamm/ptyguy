@@ -7,10 +7,10 @@ name = "ptyguy"
 version = "0.1.0.dev0"
 description = "Orchestrator for ptychography reconstructions at EPICS/Tango beamlines"
 requires-python = ">=3.9"
-dependencies = ["pyyaml", "caproto"]
+dependencies = ["pyyaml", "caproto", "numpy", "h5py"]
 
 [project.optional-dependencies]
-dev = ["pytest", "h5py", "numpy"]
+dev = ["pytest", "matplotlib"]
 
 [tool.setuptools.packages.find]
 include = ["ptyguy*"]
