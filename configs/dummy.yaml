@@ -1,0 +1,27 @@
+# Signal mapping for the dummy beamline (sim/dummy_beamline.py).
+# Left: PtyGuy's logical signal. Right: where this beamline keeps it.
+beamline: dummy
+control_system: epics
+
+signals:
+  scan_state:
+    pv: DUMMY:SCAN:STATE
+    states:                     # logical state: beamline value(s)
+      idle: IDLE
+      running: RUNNING
+      done: DONE
+      aborted: ABORTED
+  scan_number:       {pv: DUMMY:SCAN:NUMBER}
+  file_path:         {pv: DUMMY:DET:FILEPATH, type: string}
+  writing:           {pv: DUMMY:DET:WRITING}
+  energy:            {pv: DUMMY:OPT:ENERGY, unit: eV}
+  probe_size:        {pv: DUMMY:OPT:PROBE:SIZE, unit: um}
+  detector_distance: {pv: DUMMY:DET:DISTANCE, unit: m}
+  pixel_size:        {pv: DUMMY:DET:PIXEL_SIZE, unit: um}
+  npoints:           {pv: DUMMY:SCAN:NPOINTS}
+  scan_type:         {pv: DUMMY:SCAN:TYPE}
+  step:              {pv: DUMMY:SCAN:STEP, unit: um}
+
+options:
+  reconstruct_aborted: false
+  file_stable_s: 2
