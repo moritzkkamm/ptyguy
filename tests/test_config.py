@@ -24,7 +24,7 @@ def test_dummy_config_loads():
     cfg = load_config(ROOT / "configs" / "dummy.yaml")
     assert cfg.beamline == "dummy"
     assert cfg.signals["energy"].unit == "eV"
-    assert cfg.options["reconstruct_aborted"] is False
+    assert cfg.options["file_timeout_s"] == 300
 
 
 def test_unit_conversion():

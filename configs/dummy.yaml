@@ -23,5 +23,5 @@ signals:
   step:              {pv: DUMMY:SCAN:STEP, unit: um}
 
 options:
-  reconstruct_aborted: false
-  file_stable_s: 2
+  file_stable_s: 2         # no 'writing' signal: file size unchanged this long = ready
+  file_timeout_s: 300      # scan done but file not ready after this long: INCOMPLETE

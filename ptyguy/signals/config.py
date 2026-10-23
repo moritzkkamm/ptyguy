@@ -13,8 +13,8 @@ from .catalog import CATALOG, LOGICAL_STATES, UNITS, SignalSpec, convert, dimens
 
 SUPPORTED_CONTROL_SYSTEMS = ("epics",)
 SIGNAL_KEYS = {"pv", "value", "unit", "type", "states", "kind"}
-DEFAULT_OPTIONS = {"reconstruct_aborted": False, "file_stable_s": 2.0}
-
+DEFAULT_OPTIONS = {"file_stable_s": 2.0, "file_timeout_s": 300.0}
+   
 class ConfigError(Exception):
     """Raised with ALL problems at once, so a beamline setup is one fix round."""
 
