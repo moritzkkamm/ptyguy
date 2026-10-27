@@ -26,6 +26,8 @@ from pathlib import Path
 import h5py
 import numpy as np
 
+from . import fsutil
+
 
 def _to_numpy(a):
     if a is None:
@@ -40,7 +42,7 @@ def _replace_atomic(write, final):
     final = Path(final)
     tmp = final.with_name("." + final.name + ".tmp")
     write(tmp)
-    os.replace(tmp, final)
+    fsutil.replace(tmp, final)           # retries while a reader has it open
 
 
 def load_job(job_path=None):
@@ -95,7 +97,7 @@ class Hook:
 
         _replace_atomic(write, self.snapshot_dir / ("iter_%06d.h5" % iteration))
         for old in sorted(self.snapshot_dir.glob("iter_*.h5"))[:-self.keep]:
-            old.unlink()
+            fsutil.try_unlink(old)               # still open in the plotter: next time
 
     def finish(self, obj, probe=None, **attrs):
         """Full-resolution result + final progress. Extra attrs go into result.h5."""
@@ -120,4 +122,7 @@ class Hook:
         data = {"iteration": iteration, "iterations": self.total, "error": error,
                 "state": state, "heartbeat": self._last_progress,
                 "elapsed": self._last_progress - self.t0}
-        _replace_atomic(lambda p: p.write_text(json.dumps(data)), self.progress_path)
+        try:
+            _replace_atomic(lambda p: p.write_text(json.dumps(data)), self.progress_path)
+        except OSError:
+            pass        # progress is cosmetic: never let it kill a reconstruction

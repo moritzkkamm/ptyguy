@@ -9,10 +9,11 @@
       result.h5      the reconstruction writes at the end
 """
 import json
-import os
 import shutil
 import time
 from pathlib import Path
+
+from .. import fsutil
 
 QUEUED, RUNNING, DONE, FAILED = "queued", "running", "done", "failed"
 
@@ -22,7 +23,7 @@ def write_json_atomic(path, obj):
     path = Path(path)
     tmp = path.with_name("." + path.name + ".tmp")
     tmp.write_text(json.dumps(obj, indent=2, sort_keys=True, default=str))
-    os.replace(tmp, path)
+    fsutil.replace(tmp, path)            # the plotter may be reading it right now
 
 
 def read_json(path, default=None):

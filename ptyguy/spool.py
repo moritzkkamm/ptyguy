@@ -15,6 +15,8 @@ Two rules make it safe:
 import os
 from pathlib import Path
 
+from . import fsutil
+
 STATES = ("incoming", "claimed", "done", "failed")
 
 
@@ -35,7 +37,7 @@ class Spool:
             f.write(text)
             f.flush()
             os.fsync(f.fileno())          # on disk before anyone can see the name
-        os.replace(tmp, final)            # atomic, also overwrites on Windows
+        fsutil.replace(tmp, final)        # atomic; retries if a reader holds it (Windows)
         return final
 
     def pending(self):
@@ -55,7 +57,7 @@ class Spool:
     def finish(self, name, ok=True, message=""):
         """claimed/ -> done/ or failed/ (+ <name>.err with the message)."""
         state = "done" if ok else "failed"
-        os.replace(self.path("claimed", name), self.path(state, name))
+        fsutil.replace(self.path("claimed", name), self.path(state, name))
         if message:
             suffix = ".log" if ok else ".err"
             self.path(state, name).with_suffix(suffix).write_text(message)
